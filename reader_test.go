@@ -28,8 +28,10 @@ type readerStep struct {
 }
 
 type readerTest struct {
-	Name  string
-	Steps []readerStep
+	Name        string
+	WithPadding bool
+	Padding     cipherio.Padding
+	Steps       []readerStep
 }
 
 func TestReader(t *testing.T) {
@@ -177,6 +179,14 @@ func TestReader(t *testing.T) {
 						ResErr: io.EOF,
 					},
 					ExpectedLen: 48,
+					ExpectedErr: io.EOF,
+				},
+				// Read after EOF.
+				// The reader should not attempt to call the mock.
+				{
+					BufLen:      16,
+					MockCall:    nil,
+					ExpectedLen: 0,
 					ExpectedErr: io.EOF,
 				},
 			},
@@ -348,7 +358,14 @@ func TestReader(t *testing.T) {
 			defer mockCtrl.Finish()
 
 			mock := iomock.NewMockReader(mockCtrl)
-			reader := cipherio.NewBlockReader(mock, cipher.NewCBCEncrypter(aesCipher, iv))
+			blockMode := cipher.NewCBCEncrypter(aesCipher, iv)
+
+			var reader io.Reader
+			if testCase.WithPadding {
+				reader = cipherio.NewBlockReaderWithPadding(mock, blockMode, testCase.Padding)
+			} else {
+				reader = cipherio.NewBlockReader(mock, blockMode)
+			}
 
 			var lastMockCall *gomock.Call
 			originalOffset := 0
