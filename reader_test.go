@@ -8,9 +8,9 @@ import (
 	"io"
 	"testing"
 
-	"github.com/connesc/cipherio"
 	"github.com/golang/mock/gomock"
 
+	"github.com/connesc/cipherio"
 	"github.com/connesc/cipherio/iomock"
 )
 
@@ -27,11 +27,14 @@ type readerStep struct {
 	ExpectedErr error
 }
 
+type expectedPadding struct {
+	Len int
+}
+
 type readerTest struct {
-	Name        string
-	WithPadding bool
-	Padding     cipherio.Padding
-	Steps       []readerStep
+	Name    string
+	Steps   []readerStep
+	Padding *expectedPadding
 }
 
 func TestReader(t *testing.T) {
@@ -63,6 +66,9 @@ func TestReader(t *testing.T) {
 
 	expectedBytes := make([]byte, len(originalBytes))
 	cipher.NewCBCEncrypter(aesCipher, iv).CryptBlocks(expectedBytes, originalBytes)
+
+	// Prepare a custom error
+	// testErr := fmt.Errorf("test error") // TODO
 
 	// Prepare test cases
 	testCases := []readerTest{
@@ -347,6 +353,82 @@ func TestReader(t *testing.T) {
 				},
 			},
 		},
+		{
+			Name: "SmallBufPadding",
+			Padding: &expectedPadding{
+				Len: 6,
+			},
+			Steps: []readerStep{
+				{
+					BufLen: 3,
+					MockCall: &mockCall{
+						ReqLen: 16,
+						ResLen: 5,
+						ResErr: nil,
+					},
+					ExpectedLen: 0,
+					ExpectedErr: nil,
+				},
+				{
+					BufLen: 3,
+					MockCall: &mockCall{
+						ReqLen: 11,
+						ResLen: 5,
+						ResErr: io.EOF,
+					},
+					ExpectedLen: 3,
+					ExpectedErr: nil,
+				},
+				{
+					BufLen:      16,
+					MockCall:    nil,
+					ExpectedLen: 13,
+					ExpectedErr: io.EOF,
+				},
+			},
+		},
+		{
+			Name: "LargeBufPadding",
+			Padding: &expectedPadding{
+				Len: 8,
+			},
+			Steps: []readerStep{
+				{
+					BufLen: 32,
+					MockCall: &mockCall{
+						ReqLen: 32,
+						ResLen: 24,
+						ResErr: io.EOF,
+					},
+					ExpectedLen: 32,
+					ExpectedErr: io.EOF,
+				},
+			},
+		},
+		{
+			Name: "LargeBufExceedingPadding",
+			Padding: &expectedPadding{
+				Len: 8,
+			},
+			Steps: []readerStep{
+				{
+					BufLen: 28,
+					MockCall: &mockCall{
+						ReqLen: 28,
+						ResLen: 24,
+						ResErr: io.EOF,
+					},
+					ExpectedLen: 28,
+					ExpectedErr: nil,
+				},
+				{
+					BufLen:      16,
+					MockCall:    nil,
+					ExpectedLen: 4,
+					ExpectedErr: io.EOF,
+				},
+			},
+		},
 	}
 
 	// Run test cases
@@ -360,16 +442,21 @@ func TestReader(t *testing.T) {
 			mock := iomock.NewMockReader(mockCtrl)
 			blockMode := cipher.NewCBCEncrypter(aesCipher, iv)
 
-			var reader io.Reader
-			if testCase.WithPadding {
-				reader = cipherio.NewBlockReaderWithPadding(mock, blockMode, testCase.Padding)
-			} else {
-				reader = cipherio.NewBlockReader(mock, blockMode)
-			}
-
 			var lastMockCall *gomock.Call
 			originalOffset := 0
 			expectedOffset := 0
+
+			var reader io.Reader
+			if testCase.Padding != nil {
+				reader = cipherio.NewBlockReaderWithPadding(mock, blockMode, cipherio.PaddingFunc(func(dst []byte) {
+					if len(dst) != testCase.Padding.Len {
+						t.Fatalf("unexpected padding length: %d != %d", len(dst), testCase.Padding.Len)
+					}
+					copy(dst, originalBytes[originalOffset:])
+				}))
+			} else {
+				reader = cipherio.NewBlockReader(mock, blockMode)
+			}
 
 			for _, step := range testCase.Steps {
 				buf := make([]byte, step.BufLen)
