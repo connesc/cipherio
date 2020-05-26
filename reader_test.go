@@ -5,6 +5,7 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
+	"fmt"
 	"io"
 	"testing"
 
@@ -68,7 +69,7 @@ func TestReader(t *testing.T) {
 	cipher.NewCBCEncrypter(aesCipher, iv).CryptBlocks(expectedBytes, originalBytes)
 
 	// Prepare a custom error
-	// testErr := fmt.Errorf("test error") // TODO
+	testErr := fmt.Errorf("test error")
 
 	// Prepare test cases
 	testCases := []readerTest{
@@ -354,6 +355,77 @@ func TestReader(t *testing.T) {
 			},
 		},
 		{
+			Name: "SmallBufErr",
+			Steps: []readerStep{
+				{
+					BufLen: 3,
+					MockCall: &mockCall{
+						ReqLen: 16,
+						ResLen: 5,
+						ResErr: nil,
+					},
+					ExpectedLen: 0,
+					ExpectedErr: nil,
+				},
+				{
+					BufLen: 3,
+					MockCall: &mockCall{
+						ReqLen: 11,
+						ResLen: 5,
+						ResErr: testErr,
+					},
+					ExpectedLen: 0,
+					ExpectedErr: testErr,
+				},
+			},
+		},
+		{
+			Name: "SmallBufErrWithData",
+			Steps: []readerStep{
+				{
+					BufLen: 3,
+					MockCall: &mockCall{
+						ReqLen: 16,
+						ResLen: 5,
+						ResErr: nil,
+					},
+					ExpectedLen: 0,
+					ExpectedErr: nil,
+				},
+				{
+					BufLen: 3,
+					MockCall: &mockCall{
+						ReqLen: 11,
+						ResLen: 11,
+						ResErr: testErr,
+					},
+					ExpectedLen: 3,
+					ExpectedErr: nil,
+				},
+				{
+					BufLen:      13,
+					MockCall:    nil,
+					ExpectedLen: 13,
+					ExpectedErr: testErr,
+				},
+			},
+		},
+		{
+			Name: "LargeBufErr",
+			Steps: []readerStep{
+				{
+					BufLen: 32,
+					MockCall: &mockCall{
+						ReqLen: 32,
+						ResLen: 24,
+						ResErr: testErr,
+					},
+					ExpectedLen: 16,
+					ExpectedErr: testErr,
+				},
+			},
+		},
+		{
 			Name: "SmallBufPadding",
 			Padding: &expectedPadding{
 				Len: 6,
@@ -426,6 +498,42 @@ func TestReader(t *testing.T) {
 					MockCall:    nil,
 					ExpectedLen: 4,
 					ExpectedErr: io.EOF,
+				},
+			},
+		},
+		{
+			Name: "SmallBufErrNoPadding",
+			Padding: &expectedPadding{
+				Len: -1,
+			},
+			Steps: []readerStep{
+				{
+					BufLen: 12,
+					MockCall: &mockCall{
+						ReqLen: 16,
+						ResLen: 3,
+						ResErr: testErr,
+					},
+					ExpectedLen: 0,
+					ExpectedErr: testErr,
+				},
+			},
+		},
+		{
+			Name: "LargeBufErrNoPadding",
+			Padding: &expectedPadding{
+				Len: -1,
+			},
+			Steps: []readerStep{
+				{
+					BufLen: 32,
+					MockCall: &mockCall{
+						ReqLen: 32,
+						ResLen: 24,
+						ResErr: testErr,
+					},
+					ExpectedLen: 16,
+					ExpectedErr: testErr,
 				},
 			},
 		},

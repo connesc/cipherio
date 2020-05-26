@@ -62,7 +62,7 @@ func (r *blockReader) Read(p []byte) (int, error) {
 
 	// Read previously crypted bytes, even if an error has already been encountered. Stop early if
 	// the crypted buffer cannot be entirely consumed.
-	if r.crypted > 0 && (r.err == nil || r.err == io.EOF) {
+	if r.crypted > 0 {
 		n := r.readCryptedBuf(p)
 		p = p[n:]
 		count += n
