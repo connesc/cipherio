@@ -18,8 +18,8 @@ type blockReader struct {
 // NewBlockReader wraps the given Reader to add on-the-fly encryption or decryption using the
 // given BlockMode.
 //
-// The input must be aligned to the cipher block size: ErrUnexpectedEOF is returned if EOF is
-// reached in the middle of a block.
+// Data must be aligned to the cipher block size: ErrUnexpectedEOF is returned if EOF is reached in
+// the middle of a block.
 //
 // This Reader avoids buffering and copies as much as possible. A call to Read leads to at most
 // one Read from the wrapped Reader. Unless the destination buffer is smaller than BlockSize,

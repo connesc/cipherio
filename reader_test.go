@@ -12,10 +12,10 @@ import (
 	"github.com/golang/mock/gomock"
 
 	"github.com/connesc/cipherio"
-	"github.com/connesc/cipherio/iomock"
+	"github.com/connesc/cipherio/internal/mocks"
 )
 
-type mockCall struct {
+type readerMockCall struct {
 	ReqLen int
 	ResLen int
 	ResErr error
@@ -23,19 +23,15 @@ type mockCall struct {
 
 type readerStep struct {
 	BufLen      int
-	MockCall    *mockCall
+	MockCall    *readerMockCall
 	ExpectedLen int
 	ExpectedErr error
-}
-
-type expectedPadding struct {
-	Len int
 }
 
 type readerTest struct {
 	Name    string
 	Steps   []readerStep
-	Padding *expectedPadding
+	Padding *paddingMock
 }
 
 func TestReader(t *testing.T) {
@@ -81,7 +77,7 @@ func TestReader(t *testing.T) {
 				// Nothing should be returned because the first block is incomplete.
 				{
 					BufLen: 3,
-					MockCall: &mockCall{
+					MockCall: &readerMockCall{
 						ReqLen: 16,
 						ResLen: 5,
 						ResErr: nil,
@@ -94,7 +90,7 @@ func TestReader(t *testing.T) {
 				// Nothing should be returned because the first block is still incomplete.
 				{
 					BufLen: 3,
-					MockCall: &mockCall{
+					MockCall: &readerMockCall{
 						ReqLen: 11,
 						ResLen: 5,
 						ResErr: nil,
@@ -107,7 +103,7 @@ func TestReader(t *testing.T) {
 				// The first 3 bytes should be finally available since the first block is now complete.
 				{
 					BufLen: 3,
-					MockCall: &mockCall{
+					MockCall: &readerMockCall{
 						ReqLen: 6,
 						ResLen: 6,
 						ResErr: nil,
@@ -135,7 +131,7 @@ func TestReader(t *testing.T) {
 				// The reader should to read all of them but only the first block should be returned.
 				{
 					BufLen: 24,
-					MockCall: &mockCall{
+					MockCall: &readerMockCall{
 						ReqLen: 24,
 						ResLen: 24,
 						ResErr: nil,
@@ -148,7 +144,7 @@ func TestReader(t *testing.T) {
 				// One block should be returned
 				{
 					BufLen: 20,
-					MockCall: &mockCall{
+					MockCall: &readerMockCall{
 						ReqLen: 12,
 						ResLen: 12,
 						ResErr: nil,
@@ -161,7 +157,7 @@ func TestReader(t *testing.T) {
 				// One block should be returned
 				{
 					BufLen: 16,
-					MockCall: &mockCall{
+					MockCall: &readerMockCall{
 						ReqLen: 12,
 						ResLen: 12,
 						ResErr: nil,
@@ -180,7 +176,7 @@ func TestReader(t *testing.T) {
 				// Read exactly 3 blocks and reach EOF.
 				{
 					BufLen: 48,
-					MockCall: &mockCall{
+					MockCall: &readerMockCall{
 						ReqLen: 48,
 						ResLen: 48,
 						ResErr: io.EOF,
@@ -203,7 +199,7 @@ func TestReader(t *testing.T) {
 			Steps: []readerStep{
 				{
 					BufLen: 12,
-					MockCall: &mockCall{
+					MockCall: &readerMockCall{
 						ReqLen: 16,
 						ResLen: 0,
 						ResErr: io.EOF,
@@ -218,7 +214,7 @@ func TestReader(t *testing.T) {
 			Steps: []readerStep{
 				{
 					BufLen: 24,
-					MockCall: &mockCall{
+					MockCall: &readerMockCall{
 						ReqLen: 24,
 						ResLen: 0,
 						ResErr: io.EOF,
@@ -233,7 +229,7 @@ func TestReader(t *testing.T) {
 			Steps: []readerStep{
 				{
 					BufLen: 12,
-					MockCall: &mockCall{
+					MockCall: &readerMockCall{
 						ReqLen: 16,
 						ResLen: 16,
 						ResErr: io.EOF,
@@ -254,7 +250,7 @@ func TestReader(t *testing.T) {
 			Steps: []readerStep{
 				{
 					BufLen: 24,
-					MockCall: &mockCall{
+					MockCall: &readerMockCall{
 						ReqLen: 24,
 						ResLen: 16,
 						ResErr: io.EOF,
@@ -269,7 +265,7 @@ func TestReader(t *testing.T) {
 			Steps: []readerStep{
 				{
 					BufLen: 12,
-					MockCall: &mockCall{
+					MockCall: &readerMockCall{
 						ReqLen: 16,
 						ResLen: 16,
 						ResErr: nil,
@@ -279,7 +275,7 @@ func TestReader(t *testing.T) {
 				},
 				{
 					BufLen: 12,
-					MockCall: &mockCall{
+					MockCall: &readerMockCall{
 						ReqLen: 16,
 						ResLen: 0,
 						ResErr: io.EOF,
@@ -294,7 +290,7 @@ func TestReader(t *testing.T) {
 			Steps: []readerStep{
 				{
 					BufLen: 24,
-					MockCall: &mockCall{
+					MockCall: &readerMockCall{
 						ReqLen: 24,
 						ResLen: 16,
 						ResErr: nil,
@@ -304,7 +300,7 @@ func TestReader(t *testing.T) {
 				},
 				{
 					BufLen: 24,
-					MockCall: &mockCall{
+					MockCall: &readerMockCall{
 						ReqLen: 24,
 						ResLen: 0,
 						ResErr: io.EOF,
@@ -319,7 +315,7 @@ func TestReader(t *testing.T) {
 			Steps: []readerStep{
 				{
 					BufLen: 3,
-					MockCall: &mockCall{
+					MockCall: &readerMockCall{
 						ReqLen: 16,
 						ResLen: 5,
 						ResErr: nil,
@@ -329,7 +325,7 @@ func TestReader(t *testing.T) {
 				},
 				{
 					BufLen: 3,
-					MockCall: &mockCall{
+					MockCall: &readerMockCall{
 						ReqLen: 11,
 						ResLen: 5,
 						ResErr: io.EOF,
@@ -344,7 +340,7 @@ func TestReader(t *testing.T) {
 			Steps: []readerStep{
 				{
 					BufLen: 32,
-					MockCall: &mockCall{
+					MockCall: &readerMockCall{
 						ReqLen: 32,
 						ResLen: 24,
 						ResErr: io.EOF,
@@ -359,7 +355,7 @@ func TestReader(t *testing.T) {
 			Steps: []readerStep{
 				{
 					BufLen: 3,
-					MockCall: &mockCall{
+					MockCall: &readerMockCall{
 						ReqLen: 16,
 						ResLen: 5,
 						ResErr: nil,
@@ -369,7 +365,7 @@ func TestReader(t *testing.T) {
 				},
 				{
 					BufLen: 3,
-					MockCall: &mockCall{
+					MockCall: &readerMockCall{
 						ReqLen: 11,
 						ResLen: 5,
 						ResErr: testErr,
@@ -384,7 +380,7 @@ func TestReader(t *testing.T) {
 			Steps: []readerStep{
 				{
 					BufLen: 3,
-					MockCall: &mockCall{
+					MockCall: &readerMockCall{
 						ReqLen: 16,
 						ResLen: 5,
 						ResErr: nil,
@@ -394,7 +390,7 @@ func TestReader(t *testing.T) {
 				},
 				{
 					BufLen: 3,
-					MockCall: &mockCall{
+					MockCall: &readerMockCall{
 						ReqLen: 11,
 						ResLen: 11,
 						ResErr: testErr,
@@ -415,7 +411,7 @@ func TestReader(t *testing.T) {
 			Steps: []readerStep{
 				{
 					BufLen: 32,
-					MockCall: &mockCall{
+					MockCall: &readerMockCall{
 						ReqLen: 32,
 						ResLen: 24,
 						ResErr: testErr,
@@ -427,13 +423,13 @@ func TestReader(t *testing.T) {
 		},
 		{
 			Name: "SmallBufPadding",
-			Padding: &expectedPadding{
+			Padding: &paddingMock{
 				Len: 6,
 			},
 			Steps: []readerStep{
 				{
 					BufLen: 3,
-					MockCall: &mockCall{
+					MockCall: &readerMockCall{
 						ReqLen: 16,
 						ResLen: 5,
 						ResErr: nil,
@@ -443,7 +439,7 @@ func TestReader(t *testing.T) {
 				},
 				{
 					BufLen: 3,
-					MockCall: &mockCall{
+					MockCall: &readerMockCall{
 						ReqLen: 11,
 						ResLen: 5,
 						ResErr: io.EOF,
@@ -461,13 +457,13 @@ func TestReader(t *testing.T) {
 		},
 		{
 			Name: "LargeBufPadding",
-			Padding: &expectedPadding{
+			Padding: &paddingMock{
 				Len: 8,
 			},
 			Steps: []readerStep{
 				{
 					BufLen: 32,
-					MockCall: &mockCall{
+					MockCall: &readerMockCall{
 						ReqLen: 32,
 						ResLen: 24,
 						ResErr: io.EOF,
@@ -479,13 +475,13 @@ func TestReader(t *testing.T) {
 		},
 		{
 			Name: "LargeBufExceedingPadding",
-			Padding: &expectedPadding{
+			Padding: &paddingMock{
 				Len: 8,
 			},
 			Steps: []readerStep{
 				{
 					BufLen: 28,
-					MockCall: &mockCall{
+					MockCall: &readerMockCall{
 						ReqLen: 28,
 						ResLen: 24,
 						ResErr: io.EOF,
@@ -503,13 +499,13 @@ func TestReader(t *testing.T) {
 		},
 		{
 			Name: "SmallBufErrNoPadding",
-			Padding: &expectedPadding{
+			Padding: &paddingMock{
 				Len: -1,
 			},
 			Steps: []readerStep{
 				{
 					BufLen: 12,
-					MockCall: &mockCall{
+					MockCall: &readerMockCall{
 						ReqLen: 16,
 						ResLen: 3,
 						ResErr: testErr,
@@ -521,13 +517,13 @@ func TestReader(t *testing.T) {
 		},
 		{
 			Name: "LargeBufErrNoPadding",
-			Padding: &expectedPadding{
+			Padding: &paddingMock{
 				Len: -1,
 			},
 			Steps: []readerStep{
 				{
 					BufLen: 32,
-					MockCall: &mockCall{
+					MockCall: &readerMockCall{
 						ReqLen: 32,
 						ResLen: 24,
 						ResErr: testErr,
@@ -547,7 +543,7 @@ func TestReader(t *testing.T) {
 			mockCtrl := gomock.NewController(t)
 			defer mockCtrl.Finish()
 
-			mock := iomock.NewMockReader(mockCtrl)
+			mock := mocks.NewMockReader(mockCtrl)
 			blockMode := cipher.NewCBCEncrypter(aesCipher, iv)
 
 			var lastMockCall *gomock.Call
@@ -556,12 +552,10 @@ func TestReader(t *testing.T) {
 
 			var reader io.Reader
 			if testCase.Padding != nil {
-				reader = cipherio.NewBlockReaderWithPadding(mock, blockMode, cipherio.PaddingFunc(func(dst []byte) {
-					if len(dst) != testCase.Padding.Len {
-						t.Fatalf("unexpected padding length: %d != %d", len(dst), testCase.Padding.Len)
-					}
+				padding := testCase.Padding.NewMock(mockCtrl, cipherio.PaddingFunc(func(dst []byte) {
 					copy(dst, originalBytes[originalOffset:])
 				}))
+				reader = cipherio.NewBlockReaderWithPadding(mock, blockMode, padding)
 			} else {
 				reader = cipherio.NewBlockReader(mock, blockMode)
 			}
@@ -570,15 +564,15 @@ func TestReader(t *testing.T) {
 				buf := make([]byte, step.BufLen)
 
 				if step.MockCall != nil {
-					mockCall := mock.EXPECT().Read(gomock.Len(step.MockCall.ReqLen)).DoAndReturn(func(p []byte) (int, error) {
+					readerMockCall := mock.EXPECT().Read(gomock.Len(step.MockCall.ReqLen)).DoAndReturn(func(p []byte) (int, error) {
 						copy(p[:step.MockCall.ResLen], originalBytes[originalOffset:])
 						originalOffset += step.MockCall.ResLen
 						return step.MockCall.ResLen, step.MockCall.ResErr
 					})
 					if lastMockCall != nil {
-						mockCall.After(lastMockCall)
+						readerMockCall.After(lastMockCall)
 					}
-					lastMockCall = mockCall
+					lastMockCall = readerMockCall
 				}
 
 				n, err := reader.Read(buf)

@@ -5,7 +5,21 @@ import (
 	"testing"
 
 	"github.com/connesc/cipherio"
+	"github.com/connesc/cipherio/internal/mocks"
+	"github.com/golang/mock/gomock"
 )
+
+type paddingMock struct {
+	Len int
+}
+
+func (m *paddingMock) NewMock(ctrl *gomock.Controller, padding cipherio.Padding) cipherio.Padding {
+	mock := mocks.NewMockPadding(ctrl)
+	if m.Len >= 0 {
+		mock.EXPECT().Fill(gomock.Len(m.Len)).DoAndReturn(padding.Fill)
+	}
+	return mock
+}
 
 type paddingTest struct {
 	Name     string
