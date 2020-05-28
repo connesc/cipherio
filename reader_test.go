@@ -30,8 +30,8 @@ type readerStep struct {
 
 type readerTest struct {
 	Name    string
-	Steps   []readerStep
 	Padding *paddingMock
+	Steps   []readerStep
 }
 
 func TestReader(t *testing.T) {
@@ -564,15 +564,15 @@ func TestReader(t *testing.T) {
 				buf := make([]byte, step.BufLen)
 
 				if step.MockCall != nil {
-					readerMockCall := mock.EXPECT().Read(gomock.Len(step.MockCall.ReqLen)).DoAndReturn(func(p []byte) (int, error) {
+					mockCall := mock.EXPECT().Read(gomock.Len(step.MockCall.ReqLen)).DoAndReturn(func(p []byte) (int, error) {
 						copy(p[:step.MockCall.ResLen], originalBytes[originalOffset:])
 						originalOffset += step.MockCall.ResLen
 						return step.MockCall.ResLen, step.MockCall.ResErr
 					})
 					if lastMockCall != nil {
-						readerMockCall.After(lastMockCall)
+						mockCall.After(lastMockCall)
 					}
-					lastMockCall = readerMockCall
+					lastMockCall = mockCall
 				}
 
 				n, err := reader.Read(buf)
