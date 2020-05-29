@@ -5,7 +5,7 @@
 [![GitHub tag](https://img.shields.io/github/v/tag/connesc/cipherio?sort=semver)](https://github.com/connesc/cipherio/tags)
 [![License](https://img.shields.io/github/license/connesc/cipherio)](LICENSE)
 
-Golang package allowing to use block ciphers with `io.Reader` and `io.Writer`.
+This Golang package allows to use block ciphers with `io.Reader` and `io.Writer`.
 
 Golang already provides [`io.Reader`](https://golang.org/pkg/io/#Reader) and [`io.Writer`](https://golang.org/pkg/io/#Writer) implementations for [`cipher.Stream`](https://golang.org/pkg/crypto/cipher/#Stream), but not for [`cipher.BlockMode`](https://golang.org/pkg/crypto/cipher/#BlockMode) (such as AES-CBC). The purpose of this package is to fill the gap.
 
